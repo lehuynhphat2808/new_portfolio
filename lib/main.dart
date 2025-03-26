@@ -21,9 +21,9 @@ class MyApp extends StatelessWidget {
               backgroundColor: Colors.grey[200],
               body: Center(
                 child: DeviceFrame(
-                  device: Devices.ios.iPhone13, // Hoặc bất kỳ thiết bị nào từ Devices
+                  device: Devices.ios.iPadPro11Inches, // Hoặc bất kỳ thiết bị nào từ Devices
                   isFrameVisible: true,
-                  orientation: Orientation.portrait,
+                  orientation: Orientation.landscape,
                   screen: YourActualApp(),
                 ),
               ),
