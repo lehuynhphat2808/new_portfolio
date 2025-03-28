@@ -41,7 +41,7 @@ class _DeviceFrameWrapperState extends State<DeviceFrameWrapper>
   DeviceInfo currentDevice = Devices.ios.iPadPro11Inches;
   Orientation currentOrientation = Orientation.landscape;
   late AnimationController _controller;
-  late Animation<double> _rotationAnimation;
+  bool isAnimating = false;
 
   List<DeviceInfo> devices = [
     Devices.ios.iPadPro11Inches,
@@ -58,31 +58,34 @@ class _DeviceFrameWrapperState extends State<DeviceFrameWrapper>
   }
 
   void toggleOrientation() {
-    // Xác định hướng mới
-    Orientation newOrientation = (currentOrientation == Orientation.portrait)
+    if (isAnimating) return;
+
+    isAnimating = true;
+
+    // Xác định hướng cuối cùng sau khi hoàn thành animation
+    final newOrientation = currentOrientation == Orientation.portrait
         ? Orientation.landscape
         : Orientation.portrait;
 
-    // Tính giá trị turns mục tiêu: 0.0 cho portrait, 0.25 cho landscape
-    double targetTurns = (newOrientation == Orientation.portrait) ? 0.0 : 0.25;
-
-    // Lấy giá trị turns hiện tại
-    double currentTurns = (currentOrientation == Orientation.portrait) ? 0.0 : 0.25;
-
-    // Tạo animation từ turns hiện tại đến turns mục tiêu
-    _rotationAnimation = Tween<double>(begin: currentTurns, end: targetTurns)
-        .animate(_controller)
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          setState(() {
-            currentOrientation = newOrientation;
-          });
-        }
+    if (newOrientation == Orientation.landscape) {
+      // Xoay từ dọc sang ngang (0 -> 0.25)
+      _controller.reset();
+      _controller.forward().then((_) {
+        setState(() {
+          currentOrientation = newOrientation;
+          isAnimating = false;
+        });
       });
-
-    // Khởi động animation
-    _controller.reset();
-    _controller.forward();
+    } else {
+      // Xoay từ ngang sang dọc (0.25 -> 0)
+      _controller.reset();
+      _controller.forward().then((_) {
+        setState(() {
+          currentOrientation = newOrientation;
+          isAnimating = false;
+        });
+      });
+    }
   }
 
   @override
@@ -92,8 +95,6 @@ class _DeviceFrameWrapperState extends State<DeviceFrameWrapper>
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    // Khởi tạo _rotationAnimation với giá trị mặc định
-    _rotationAnimation = AlwaysStoppedAnimation(0.0);
   }
 
   @override
@@ -106,27 +107,57 @@ class _DeviceFrameWrapperState extends State<DeviceFrameWrapper>
   Widget build(BuildContext context) {
     return Column(
       children: [
+        Text('currentOrientation: ${currentOrientation.name}'),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: devices.map((device) {
-            return ElevatedButton(
-              child: Text(device.name),
-              onPressed: () => changeDevice(device),
+            return Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: ElevatedButton(
+                child: Text(device.name),
+                onPressed: () => changeDevice(device),
+              ),
             );
           }).toList(),
         ),
+        SizedBox(height: 10),
         ElevatedButton(
           child: Text('Toggle Orientation'),
           onPressed: toggleOrientation,
         ),
+        SizedBox(height: 20),
         Expanded(
-          child: RotationTransition(
-            turns: _rotationAnimation,
-            child: DeviceFrame(
-              device: currentDevice,
-              isFrameVisible: true,
-              orientation: currentOrientation,
-              screen: YourActualApp(),
+          child: Container(
+            color: Colors.grey[300],
+            width: 600,
+            height: 400,
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                // Tính toán góc xoay dựa trên hướng hiện tại và mục tiêu
+                double angle;
+                if (currentOrientation == Orientation.portrait) {
+                  // Đang ở chế độ dọc, đang xoay sang ngang
+                  angle = _controller.value * (math.pi / 2);
+                } else {
+                  // Đang ở chế độ ngang, đang xoay sang dọc
+                  angle = (1 - _controller.value) * (math.pi / 2);
+                }
+
+                return Transform.rotate(
+                  angle: angle,
+                  child: DeviceFrame(
+                    device: currentDevice,
+                    isFrameVisible: true,
+                    // orientation: isAnimating
+                    //     ? (currentOrientation == Orientation.portrait
+                    //     ? Orientation.portrait
+                    //     : Orientation.landscape)
+                    //     : currentOrientation,
+                    screen: YourActualApp(),
+                  ),
+                );
+              },
             ),
           ),
         ),
